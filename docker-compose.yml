@@ -31,10 +31,9 @@ services:
       context: ./dashboard
       dockerfile: Dockerfile.dev
     ports:
-      - "5173:5173"
+      - "4200:4200"
     volumes:
-      - ./dashboard/src:/app/src        # Vite HMR picks up changes instantly
-      - ./dashboard/public:/app/public
+      - ./dashboard/src:/app/src        # Angular CLI watches src/ for HMR
     environment:
       BACKEND_URL: "http://backend:8000"
     depends_on:

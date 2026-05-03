@@ -1,0 +1,42 @@
+<div>
+  <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Agent Pipeline</h2>
+
+  <div class="flex items-stretch gap-0">
+    <ng-container *ngFor="let agent of agents; let last = last">
+      <div class="flex items-center flex-1 min-w-0">
+
+        <!-- Agent card -->
+        <div [class]="cardClass(agent.key, agent.color)">
+          <div class="flex items-center gap-2 mb-2">
+            <span [class]="dotClass(agent.key, agent.color)"></span>
+            <span [class]="labelClass(agent.key, agent.color)">{{ agent.label }}</span>
+          </div>
+
+          <div *ngIf="isActive(agent.key)" [class]="activeTextClass(agent.color)">
+            {{ runningCount(agent.key) }} active
+          </div>
+
+          <div class="space-y-1 text-xs text-gray-500">
+            <div class="flex justify-between">
+              <span>Runs</span>
+              <span class="font-medium text-gray-700">{{ statFor(agent.key)?.runs ?? 0 }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Success</span>
+              <span [class]="successRateClass(statFor(agent.key)?.successRate)">
+                {{ statFor(agent.key)?.successRate != null ? (statFor(agent.key)!.successRate + '%') : '—' }}
+              </span>
+            </div>
+            <div class="flex justify-between">
+              <span>Cost</span>
+              <span class="font-medium text-gray-700">${{ (statFor(agent.key)?.costUsd ?? 0).toFixed(4) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Arrow connector -->
+        <div *ngIf="!last" class="px-1 text-gray-300 text-sm shrink-0">→</div>
+      </div>
+    </ng-container>
+  </div>
+</div>

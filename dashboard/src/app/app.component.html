@@ -1,0 +1,86 @@
+<div class="min-h-screen bg-gray-50 text-gray-800">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-gray-200 px-5 py-2.5 flex items-center justify-between sticky top-0 z-10 gap-4">
+
+    <!-- Left: logo + WS status -->
+    <div class="flex items-center gap-2.5 shrink-0">
+      <div class="w-2 h-2 rounded-full" [ngClass]="wsStatusClass()"></div>
+      <h1 class="text-sm font-bold text-gray-800 tracking-tight">Logistics Exception Dashboard</h1>
+      <span class="text-xs text-gray-400 hidden sm:inline">
+        <ng-container [ngSwitch]="wsStatus">
+          <ng-container *ngSwitchCase="'connected'">● live</ng-container>
+          <ng-container *ngSwitchCase="'connecting'">⟳ connecting…</ng-container>
+          <ng-container *ngSwitchCase="'disconnected'">○ reconnecting…</ng-container>
+        </ng-container>
+      </span>
+    </div>
+
+    <!-- Middle: simulate controls -->
+    <div class="flex items-center gap-2 flex-wrap justify-center">
+      <button
+        (click)="handleSimulate(null)"
+        [disabled]="simulating || wsStatus !== 'connected'"
+        class="text-xs px-3 py-1.5 rounded-md font-medium transition-colors flex items-center gap-1.5"
+        [ngClass]="simulating || wsStatus !== 'connected'
+          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+          : 'bg-indigo-600 text-white hover:bg-indigo-700'"
+      >
+        {{ simulating ? '⟳ Running…' : '⚡ Simulate Exception' }}
+      </button>
+
+      <select
+        class="text-xs border border-gray-200 rounded-md px-2 py-1.5 text-gray-600 bg-white hover:border-gray-300 focus:outline-none disabled:opacity-50"
+        [disabled]="simulating || wsStatus !== 'connected'"
+        (change)="onScenarioChange($event)"
+      >
+        <option value="" disabled selected>Pick scenario…</option>
+        <option *ngFor="let s of scenarios" [value]="s.key">{{ s.icon }} {{ s.label }}</option>
+      </select>
+
+      <span *ngIf="lastScenario && !simulating" class="text-xs text-gray-400">
+        last: {{ scenarioIcon(lastScenario) }} {{ lastScenario }}
+      </span>
+      <span *ngIf="simError" class="text-xs text-red-500 max-w-xs truncate" [title]="simError">
+        ⚠ {{ simError }}
+      </span>
+    </div>
+
+    <!-- Right: counters -->
+    <div class="flex items-center gap-3 shrink-0">
+      <span *ngIf="activeCount > 0" class="text-xs text-blue-500 font-medium">
+        {{ activeCount }} active
+      </span>
+      <span class="text-xs text-gray-400">{{ exceptions.length }} total</span>
+    </div>
+  </header>
+
+  <main class="p-4 space-y-4 max-w-screen-xl mx-auto">
+
+    <!-- Agent summary row -->
+    <div class="bg-white rounded-xl border border-gray-200 p-4">
+      <app-agent-pipeline [exceptions]="exceptions" [agentStats]="stats.agentStats"></app-agent-pipeline>
+    </div>
+
+    <!-- Workflow detail + live stream -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-4 overflow-y-auto" style="max-height:640px">
+        <app-workflow-visualizer [exceptions]="exceptions"></app-workflow-visualizer>
+      </div>
+      <div class="bg-white rounded-xl border border-gray-200 p-4 flex flex-col" style="max-height:640px">
+        <app-live-event-stream [exceptions]="exceptions"></app-live-event-stream>
+      </div>
+    </div>
+
+    <!-- Metrics row -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="bg-white rounded-xl border border-gray-200 p-4">
+        <app-resolution-metrics [stats]="stats"></app-resolution-metrics>
+      </div>
+      <div class="bg-white rounded-xl border border-gray-200 p-4">
+        <app-cost-tracker [stats]="stats"></app-cost-tracker>
+      </div>
+    </div>
+
+  </main>
+</div>

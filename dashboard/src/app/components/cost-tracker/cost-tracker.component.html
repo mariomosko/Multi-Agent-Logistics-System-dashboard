@@ -1,0 +1,59 @@
+<div class="space-y-5">
+  <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">Cost Tracking</h2>
+
+  <!-- Top stats -->
+  <div class="grid grid-cols-2 gap-2">
+    <div class="p-3 rounded-lg bg-gray-50">
+      <div class="text-xs text-gray-500 mb-0.5">Total API cost</div>
+      <div class="text-lg font-bold text-gray-800">${{ totalCost.toFixed(4) }}</div>
+      <div class="text-xs text-gray-400 mt-0.5">{{ apiCalls }} API calls</div>
+    </div>
+    <div class="p-3 rounded-lg bg-gray-50">
+      <div class="text-xs text-gray-500 mb-0.5">Avg cost / exception</div>
+      <div class="text-lg font-bold text-gray-800">${{ avgCostPerEx.toFixed(4) }}</div>
+      <div class="text-xs text-gray-400 mt-0.5">{{ resolved }} resolved</div>
+    </div>
+    <div class="p-3 rounded-lg bg-gray-50">
+      <div class="text-xs text-gray-500 mb-0.5">Input tokens</div>
+      <div class="text-lg font-bold text-gray-800">{{ totalInput.toLocaleString() }}</div>
+      <div class="text-xs text-gray-400 mt-0.5">${{ inputCostDisplay() }}</div>
+    </div>
+    <div class="p-3 rounded-lg bg-gray-50">
+      <div class="text-xs text-gray-500 mb-0.5">Output tokens</div>
+      <div class="text-lg font-bold text-gray-800">{{ totalOutput.toLocaleString() }}</div>
+      <div class="text-xs text-gray-400 mt-0.5">${{ outputCostDisplay() }}</div>
+    </div>
+  </div>
+
+  <!-- Per-agent cost breakdown -->
+  <div>
+    <p class="text-xs text-gray-400 mb-2 uppercase tracking-wider">Cost by agent</p>
+    <div class="space-y-2">
+      <div *ngFor="let agent of agents" class="space-y-0.5">
+        <div class="flex justify-between text-xs">
+          <span class="text-gray-500">{{ agent.label }}</span>
+          <span class="font-medium text-gray-700">${{ agentCost(agent.key).toFixed(4) }}</span>
+        </div>
+        <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div [ngClass]="'h-full rounded-full ' + agentBarColor(agent.color)"
+               [style.width.%]="agentBarPct(agent.key)"
+               style="transition: width 0.4s ease">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Token ratio -->
+  <div *ngIf="hasTokens">
+    <p class="text-xs text-gray-400 mb-1.5 uppercase tracking-wider">Token ratio (input / output)</p>
+    <div class="flex h-2 rounded-full overflow-hidden">
+      <div class="bg-blue-300 transition-all" [style.width.%]="inputPct()"></div>
+      <div class="flex-1 bg-violet-300"></div>
+    </div>
+    <div class="flex justify-between text-xs text-gray-400 mt-1">
+      <span>{{ inputPctLabel() }}</span>
+      <span>{{ outputPctLabel() }}</span>
+    </div>
+  </div>
+</div>

@@ -24,8 +24,10 @@ env/
 .git/
 .gitignore
 
-# Frontend (has its own build context)
-dashboard/
+# Frontend — exclude generated/installed artifacts, keep source for prod build
+dashboard/node_modules/
+dashboard/dist/
+dashboard/.angular/
 
 # Docs
 *.md

@@ -23,11 +23,11 @@ docker compose up --build
 
 | Service | URL |
 |---------|-----|
-| Dashboard | http://localhost:5173 |
+| Dashboard | http://localhost:4200 |
 | API + Swagger | http://localhost:8000/docs |
 | Health check | http://localhost:8000/health |
 
-The database is seeded automatically on first start. Source code is mounted as a volume — Python and React changes reload without rebuilding.
+The database is seeded automatically on first start. Source code is mounted as a volume — Python and Angular changes reload without rebuilding.
 
 To stop:
 
@@ -50,7 +50,7 @@ docker compose -f docker-compose.prod.yml up --build -d
 |---------|-----|
 | Dashboard + API | http://localhost (port 80) |
 
-In production, nginx serves the pre-built React SPA and proxies all `/api/` traffic (including WebSocket upgrades) to the backend container. The backend is not exposed to the host.
+In production, nginx serves the pre-built Angular SPA and proxies all `/api/` traffic (including WebSocket upgrades) to the backend container. The backend is not exposed to the host.
 
 ---
 
@@ -195,7 +195,7 @@ The entrypoint (`scripts/docker-entrypoint.sh`) runs before the server starts:
 | Change | Action needed |
 |--------|--------------|
 | Python source (`app/`) | Auto-reloaded by uvicorn in dev; `docker compose restart backend` in prod |
-| React source (`dashboard/src/`) | Auto-reloaded by Vite HMR in dev; `docker compose -f docker-compose.prod.yml build frontend` in prod |
+| Angular source (`dashboard/src/`) | Auto-reloaded by `ng serve` HMR in dev; `docker compose -f docker-compose.prod.yml build frontend` in prod |
 | `requirements.txt` | `docker compose build backend` |
 | `package.json` | `docker compose build frontend` |
 

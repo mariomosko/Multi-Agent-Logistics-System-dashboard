@@ -1,6 +1,6 @@
 # Multi-Agent Logistics System
 
-A production-style demo that routes shipment exceptions through a sequential 5-agent AI pipeline powered by Claude. Each exception — a weather delay, lost package, damaged item, etc. — is automatically detected, analyzed, decided on, communicated to the customer, and actioned, all while a live React dashboard shows every step in real time.
+A production-style demo that routes shipment exceptions through a sequential 5-agent AI pipeline powered by Claude. Each exception — a weather delay, lost package, damaged item, etc. — is automatically detected, analyzed, decided on, communicated to the customer, and actioned, all while a live Angular dashboard shows every step in real time.
 
 ---
 
@@ -20,7 +20,7 @@ docker compose up --build
 
 | Service | URL |
 |---------|-----|
-| Dashboard | http://localhost:5173 |
+| Dashboard | http://localhost:4200 |
 | API / Swagger | http://localhost:8000/docs |
 
 The database is seeded automatically on first start. See [DOCKER.md](DOCKER.md) for production deployment, logs, database management, and more.
@@ -76,7 +76,7 @@ uvicorn app.main:app --reload
 cd dashboard
 npm install
 npm run dev
-# Dashboard at http://localhost:5173
+# Dashboard at http://localhost:4200
 ```
 
 ### 5 — Trigger a live exception
@@ -89,7 +89,7 @@ Open the dashboard and click **⚡ Simulate Exception**, or pick a specific scen
 
 ```
                         ┌─────────────────────────────────────────────────┐
-                        │                  React Dashboard                │
+                        │                 Angular Dashboard                │
                         │  AgentPipeline  WorkflowVisualizer  LiveStream  │
                         │  ResolutionMetrics  CostTracker                 │
                         └──────────────┬──────────────────────────────────┘
@@ -150,7 +150,7 @@ POST /simulate/exception
                 └─► pipeline.resolved / pipeline.failed  (WS)
 ```
 
-Every WebSocket event is applied to the React component tree via `applyWsEvent()` in `dashboard/src/lib/api.js`, updating the relevant exception in place without a full re-render.
+Every WebSocket event is applied via `applyWsEvent()` in `ExceptionStreamService`, updating the `BehaviorSubject<Exception[]>` state which Angular's `async` pipe propagates to all subscribed components.
 
 ---
 
@@ -184,19 +184,20 @@ Every WebSocket event is applied to the React component tree via `applyWsEvent()
 │   ├── models.py              # ORM models
 │   ├── schemas.py             # Pydantic request/response schemas
 │   └── main.py                # FastAPI app, lifespan, router registration
-├── dashboard/                 # Vite + React + Tailwind CSS
-│   └── src/
-│       ├── App.jsx            # Root: WebSocket status, simulate controls
+├── dashboard/                 # Angular 16 + RxJS + Tailwind CSS
+│   └── src/app/
+│       ├── app.component.ts           # Root: subscribes to ExceptionStreamService
 │       ├── components/
-│       │   ├── AgentPipeline.jsx      # Per-agent status summary row
-│       │   ├── WorkflowVisualizer.jsx # Selected exception step-by-step detail
-│       │   ├── LiveEventStream.jsx    # Scrolling event log
-│       │   ├── ResolutionMetrics.jsx  # Resolution type breakdown
-│       │   └── CostTracker.jsx        # Token cost summary
-│       ├── hooks/
-│       │   └── useExceptionStream.js  # WS connection + REST initial load
-│       └── lib/
-│           └── api.js                 # REST client + WS event reducer
+│       │   ├── agent-pipeline/        # Per-agent status summary row
+│       │   ├── workflow-visualizer/   # Selected exception step-by-step detail
+│       │   ├── live-event-stream/     # Scrolling event log
+│       │   ├── resolution-metrics/    # Resolution type breakdown
+│       │   └── cost-tracker/          # Token cost summary
+│       ├── services/
+│       │   ├── exception-stream.service.ts  # WS + BehaviorSubject state
+│       │   └── api.service.ts               # REST client + WS event reducer
+│       └── models/
+│           └── exception.model.ts     # TypeScript interfaces + AGENTS constant
 ├── scripts/
 │   └── init_db.py             # Database seeder (--reset flag)
 ├── tests/
@@ -426,6 +427,6 @@ pytest tests/ -v
 | AI agents | Anthropic SDK — claude-sonnet-4-6 |
 | Schema validation | Pydantic v2 |
 | Real-time transport | FastAPI WebSockets |
-| Frontend build | Vite 8 + React 18 |
-| UI styling | Tailwind CSS v4 |
+| Frontend framework | Angular 16 + RxJS |
+| UI styling | Tailwind CSS v3 |
 | Python runtime | 3.11 / 3.12 |

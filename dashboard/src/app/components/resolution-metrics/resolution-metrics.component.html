@@ -1,0 +1,76 @@
+<div class="space-y-5">
+  <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">Resolution Outcomes</h2>
+
+  <!-- Progress bar -->
+  <div>
+    <div class="flex rounded-full overflow-hidden h-3 w-full">
+      <div class="bg-green-400 transition-all" [style.width.%]="resolvedPct" [title]="'Resolved: ' + resolved"></div>
+      <div class="bg-red-400 transition-all"   [style.width.%]="failedPct"   [title]="'Failed: ' + failed"></div>
+      <div class="bg-blue-300 transition-all"  [style.width.%]="activePct"   [title]="'Active: ' + active"></div>
+      <div class="flex-1 bg-gray-100"></div>
+    </div>
+    <div class="flex gap-4 mt-2 text-xs text-gray-500">
+      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-400"></span>{{ resolved }} resolved</span>
+      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-400"></span>{{ failed }} failed</span>
+      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-300"></span>{{ active }} active</span>
+    </div>
+  </div>
+
+  <!-- Success rate -->
+  <div class="flex items-center justify-between p-3 rounded-lg bg-gray-50">
+    <span class="text-xs text-gray-500">Success rate</span>
+    <span [class]="successRateClass()">{{ successRateDisplay() }}</span>
+  </div>
+
+  <!-- By severity -->
+  <div>
+    <p class="text-xs text-gray-400 mb-2 uppercase tracking-wider">By severity</p>
+    <div class="space-y-1.5">
+      <div *ngFor="let row of severityRows" class="flex items-center gap-2 text-xs">
+        <span class="w-24 text-gray-500 truncate">{{ row.key | titlecase }}</span>
+        <div class="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+          <div [ngClass]="'h-full rounded-full ' + row.color"
+               [style.width.%]="barPct(sevValue(row.key), total || 1)"
+               style="transition: width 0.4s ease">
+          </div>
+        </div>
+        <span class="w-6 text-right font-medium text-gray-700">{{ sevValue(row.key) }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- By exception type -->
+  <div>
+    <p class="text-xs text-gray-400 mb-2 uppercase tracking-wider">By type</p>
+    <div class="space-y-1.5">
+      <p *ngIf="typeEntries.length === 0" class="text-xs text-gray-400">No data yet</p>
+      <div *ngFor="let entry of typeEntries" class="flex items-center gap-2 text-xs">
+        <span class="w-24 text-gray-500 truncate">{{ typeLabel(entry[0]) }}</span>
+        <div class="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+          <div class="h-full rounded-full bg-violet-400"
+               [style.width.%]="barPct(entry[1], typeMax)"
+               style="transition: width 0.4s ease">
+          </div>
+        </div>
+        <span class="w-6 text-right font-medium text-gray-700">{{ entry[1] }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- By resolution type -->
+  <div *ngIf="resEntries.length > 0">
+    <p class="text-xs text-gray-400 mb-2 uppercase tracking-wider">Resolutions</p>
+    <div class="space-y-1.5">
+      <div *ngFor="let entry of resEntries" class="flex items-center gap-2 text-xs">
+        <span class="w-24 text-gray-500 truncate">{{ resLabel(entry[0]) }}</span>
+        <div class="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+          <div class="h-full rounded-full bg-emerald-400"
+               [style.width.%]="barPct(entry[1], resMax)"
+               style="transition: width 0.4s ease">
+          </div>
+        </div>
+        <span class="w-6 text-right font-medium text-gray-700">{{ entry[1] }}</span>
+      </div>
+    </div>
+  </div>
+</div>

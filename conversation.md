@@ -949,3 +949,88 @@ A production SSE endpoint would use `StreamingResponse` in FastAPI, polling the 
 **`--if-empty` seeding** — Using `--seed` alone on a container restart would re-run inserts and hit unique-constraint errors on tracking numbers. `--if-empty` skips the seed entirely if the table already has rows, making the entrypoint idempotent.
 
 **WS URL uses `window.location.host`** — `window.location.host` includes the port (e.g. `localhost:5173` in Vite dev, `localhost` in nginx prod on port 80). This means the same compiled JS works in all three environments: local dev, Docker dev, Docker prod — with zero environment-specific configuration injected into the bundle.
+
+---
+
+## Turn 17 — Angular migration
+
+**User:** "yes please migrate to angular version 14+ please and add a turn in md about migrating to angular" (context: user knows Angular, not React; wants to own and explain every line of the frontend code in interviews)
+
+### What was built
+
+The entire `dashboard/` frontend was migrated from **React 18 + Vite** to **Angular 16** with standalone components, Tailwind CSS 3, and RxJS. The backend (FastAPI, SQLite, all agents) is unchanged.
+
+#### New Angular project structure
+
+```
+dashboard/
+├── angular.json              — CLI config: browser builder, port 4200, proxy
+├── tsconfig.json             — strict TS, ES2022 module, strictTemplates: false
+├── tsconfig.app.json         — app-only tsconfig extending the root
+├── tailwind.config.js        — content: ['./src/**/*.{html,ts}']
+├── postcss.config.js         — tailwindcss + autoprefixer
+├── proxy.conf.js             — dev proxy to backend (JS file: reads BACKEND_URL env var)
+├── package.json              — Angular 16.2, RxJS 7.8, TypeScript 5.1
+└── src/
+    ├── index.html            — <app-root> entry point
+    ├── main.ts               — bootstrapApplication() + provideHttpClient()
+    ├── styles.css            — @tailwind base/components/utilities + bounce keyframe
+    └── app/
+        ├── app.component.ts  — root: subscribes to stream service, handles simulate
+        ├── app.component.html
+        ├── models/
+        │   └── exception.model.ts   — Exception, AgentDef, AgentStat, TotalStats interfaces
+        ├── services/
+        │   ├── api.service.ts            — HttpClient REST + normalizeSummary/applyWsEvent
+        │   └── exception-stream.service.ts — WebSocket + BehaviorSubject state + computeStats
+        └── components/
+            ├── agent-pipeline/
+            ├── workflow-visualizer/      — ngOnChanges auto-follow + detail fetch cache
+            ├── live-event-stream/
+            ├── resolution-metrics/
+            └── cost-tracker/
+```
+
+#### Key Angular patterns used
+
+**Standalone components (Angular 14+):** each component declares `standalone: true` and lists its own `imports`. No `AppModule` exists. `bootstrapApplication()` in `main.ts` is the only bootstrap call, with `provideHttpClient()` as the single root provider.
+
+**Service-as-store:** `ExceptionStreamService` owns the WebSocket connection and a `BehaviorSubject<Exception[]>`. `AppComponent` subscribes in `ngOnInit()` via `takeUntil(destroy$)` and passes plain arrays to child components via `@Input()`. Child components are stateless and have no knowledge of the WebSocket.
+
+**`takeUntil` cleanup:** `AppComponent` holds a `Subject<void>` (`destroy$`). All subscriptions are piped through `takeUntil(this.destroy$)` and the subject is completed in `ngOnDestroy()`, preventing memory leaks.
+
+**`ngOnChanges` for reactive logic:** `WorkflowVisualizerComponent` implements `OnChanges`. Every time the `exceptions` `@Input()` changes, `ngOnChanges` triggers `autoFollow()` (picks the latest active exception) and `checkDetailFetch()` (lazily loads full agent outputs via `GET /monitoring/exceptions/{id}`). A `Map<id, data | 'loading'>` guards against duplicate fetches.
+
+**`proxy.conf.js` (not JSON):** A JavaScript proxy config is used so `process.env.BACKEND_URL` can be read at `ng serve` startup, matching the same Docker Compose env var injection that Vite used previously.
+
+#### Infrastructure changes
+
+| File | Change |
+|---|---|
+| `dashboard/Dockerfile.dev` | `ng serve --host 0.0.0.0 --port 4200` instead of Vite |
+| `dashboard/Dockerfile` | `COPY --from=builder /app/dist/dashboard` (Angular output path) |
+| `docker-compose.yml` | Port `5173→4200`; removed `./dashboard/public:/app/public` volume |
+| `.dockerignore` | Replaced blanket `dashboard/` exclusion with `dashboard/node_modules/`, `dashboard/dist/`, `dashboard/.angular/` so prod build context can access source files |
+| `ARCHITECTURE.md` | New "Frontend: Angular Migration" section with React→Angular mapping table |
+
+#### Build result
+
+```
+✔ Browser application bundle generation complete.
+Initial Total: 246.84 kB — 0 errors, 0 warnings
+```
+
+---
+
+## Turn 18 — Angular `browserTarget` fix
+
+**User:** "Error: Schema validation failed with the following errors: Data path "" must have required property 'browserTarget'."
+
+Angular 16's `dev-server` builder uses `browserTarget` (not `buildTarget`, which is Angular 17+). Fixed `angular.json` serve configuration:
+
+```json
+"configurations": {
+  "production":  { "browserTarget": "dashboard:build:production" },
+  "development": { "browserTarget": "dashboard:build:development" }
+}
+```

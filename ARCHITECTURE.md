@@ -243,3 +243,31 @@ Each agent call records `input_tokens` and `output_tokens`. The `GET /monitoring
 ### Observability
 
 Each `AgentAction` row has `duration_ms`. Slow agents (consistently over 10 seconds) indicate either a prompt that generates very long outputs or an API latency issue. Adding a Prometheus counter and histogram around `_call_claude()` and wiring it to Grafana is straightforward — the timing infrastructure is already in place.
+
+---
+
+## Frontend: Angular Migration
+
+The dashboard was originally built with React 18 + Vite. The current version uses **Angular 16** with standalone components, Tailwind CSS 3, and RxJS — 
+### How the same architecture maps across frameworks
+
+| React | Angular |
+|-------|---------|
+| `useState` + `useEffect` | `BehaviorSubject` + `subscribe()` |
+| `useExceptionStream` custom hook | `ExceptionStreamService` (injectable singleton) |
+| Component props | `@Input()` bindings |
+| JSX template | Angular template with `*ngIf` / `*ngFor` / `[ngSwitch]` |
+| Vite dev proxy (`vite.config.js`) | Angular CLI `proxy.conf.js` (JS not JSON, so `process.env.BACKEND_URL` works in Docker) |
+| `dist/` → nginx | `dist/dashboard/` → nginx (same nginx.conf, no changes) |
+
+### Key Angular patterns used
+
+**Standalone components (Angular 14+):** every component declares `standalone: true` and lists its own imports. There is no `AppModule`. `bootstrapApplication()` in `main.ts` wires the root providers (`provideHttpClient()`).
+
+**Service-as-store:** `ExceptionStreamService` owns the WebSocket connection and a `BehaviorSubject<Exception[]>` that drives the entire UI. `AppComponent` subscribes to `exceptions$` and `wsStatus$` in `ngOnInit()` and pushes plain arrays down to child components via `@Input()`. Child components are stateless and easy to test in isolation.
+
+**`takeUntil` cleanup pattern:** `AppComponent` holds a `Subject<void>` named `destroy$`. Every subscription is piped through `takeUntil(this.destroy$)`, and the subject is completed in `ngOnDestroy()`, preventing memory leaks when the component is destroyed.
+
+**`ngOnChanges` for reactive auto-follow:** `WorkflowVisualizerComponent` implements `OnChanges`. Every time the `exceptions` input changes (driven by a WebSocket event), `ngOnChanges` calls `autoFollow()` — which selects the most recently active exception — and `checkDetailFetch()` — which lazily loads full agent outputs for historical exceptions via `GET /monitoring/exceptions/{id}`. A `Map<id, data | 'loading'>` guards against duplicate fetches.
+
+**Dynamic class construction in TypeScript:** Tailwind utility classes are built as string literals in component methods (e.g. `'ring-blue-400 bg-blue-50'`). Tailwind's JIT scanner finds them because `tailwind.config.js` includes `./src/**/*.ts` in its `content` array — the same scan that covers HTML templates also covers TypeScript source files.

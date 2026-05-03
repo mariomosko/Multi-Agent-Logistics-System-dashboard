@@ -1,0 +1,223 @@
+<div class="space-y-3">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">Workflow Detail</h2>
+    <div class="flex items-center gap-2">
+      <button *ngIf="isPinned" (click)="unpin()"
+        class="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded-md px-2 py-0.5 hover:bg-gray-50">
+        <span>📌</span><span>Pinned</span><span class="text-gray-400 hover:text-gray-600">×</span>
+      </button>
+      <span *ngIf="!isPinned" class="text-xs text-blue-500 flex items-center gap-1">
+        <span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
+        Auto-following
+      </span>
+    </div>
+  </div>
+
+  <!-- Exception selector strip -->
+  <div *ngIf="recent.length > 0" class="flex gap-1.5 overflow-x-auto pb-1">
+    <button *ngFor="let exc of recent" [class]="pillClass(exc)" (click)="pin(exc)">
+      <span [class]="pillDotClass(exc)"></span>
+      <span class="font-mono">{{ exc.tracking_number.slice(-7) }}</span>
+      <span class="px-1 rounded text-[10px]" [ngClass]="sevBadge(exc.severity)">{{ sevLabel(exc.severity) }}</span>
+    </button>
+  </div>
+
+  <!-- Empty state -->
+  <div *ngIf="!selected" class="py-12 text-center text-sm text-gray-400">
+    Waiting for exceptions…
+  </div>
+
+  <!-- Main panel -->
+  <ng-container *ngIf="selected as sel">
+
+    <!-- Exception header -->
+    <div class="flex items-center gap-3 px-4 py-3 rounded-xl border-2 mb-4 bg-white"
+         [ngClass]="sev(sel.severity).border">
+      <div class="w-1 self-stretch rounded-full" [ngClass]="sev(sel.severity).stripe"></div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs font-bold px-2 py-0.5 rounded" [ngClass]="sev(sel.severity).badge">
+            {{ sev(sel.severity).label }}
+          </span>
+          <span class="font-mono text-sm text-gray-700 font-semibold">{{ sel.tracking_number }}</span>
+          <span class="text-gray-300">·</span>
+          <span class="text-sm text-gray-500">{{ sel.carrier }}</span>
+          <span class="text-gray-300">·</span>
+          <span class="text-sm text-gray-600">{{ sel.exception_type.replace('_', ' ') }}</span>
+          <ng-container *ngIf="sel.location">
+            <span class="text-gray-300">·</span>
+            <span class="text-xs text-gray-400">{{ sel.location }}</span>
+          </ng-container>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <span [class]="workflowStatusClass(sel)">
+          <span *ngIf="isActiveException(sel)"
+                class="w-1.5 h-1.5 rounded-full animate-pulse"
+                [ngClass]="sev(sel.severity).stripe">
+          </span>
+          {{ sel.workflow_status.replace('_', ' ') }}
+        </span>
+        <span class="text-xs text-gray-400">{{ timeAgo(sel.detected_at) }}</span>
+      </div>
+    </div>
+
+    <!-- Skeleton loading -->
+    <div *ngIf="isLoadingDetail" class="space-y-2 py-2">
+      <div *ngFor="let agent of agents"
+           class="flex items-center gap-3 px-3 py-3 rounded-lg border border-gray-100 animate-pulse">
+        <div class="w-5 h-5 rounded-full bg-gray-200 shrink-0"></div>
+        <div class="flex-1 space-y-1.5">
+          <div class="h-3 bg-gray-200 rounded w-24"></div>
+          <div class="h-2.5 bg-gray-100 rounded w-48"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Agent pipeline steps -->
+    <div *ngIf="!isLoadingDetail">
+      <div *ngFor="let agent of agents; let i = index; let last = last" class="flex gap-3">
+
+        <!-- Step number + connector line -->
+        <div class="flex flex-col items-center shrink-0" style="width:28px">
+          <div [class]="stepNumClass(getStatus(agent.key), sev(sel.severity), agentStyle(agent.color))">
+            <ng-container [ngSwitch]="getStatus(agent.key)">
+              <ng-container *ngSwitchCase="'completed'">✓</ng-container>
+              <ng-container *ngSwitchCase="'failed'">✗</ng-container>
+              <ng-container *ngSwitchDefault>{{ i + 1 }}</ng-container>
+            </ng-container>
+          </div>
+          <div *ngIf="!last"
+               [class]="connectorClass(getStatus(agent.key), agentStyle(agent.color))"
+               style="min-height:16px">
+          </div>
+        </div>
+
+        <!-- Agent card -->
+        <div [class]="cardClass(getStatus(agent.key), sev(sel.severity), agentStyle(agent.color))">
+
+          <!-- Card header -->
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <span *ngIf="getStatus(agent.key) === 'running'"
+                    class="w-2 h-2 rounded-full animate-pulse" [ngClass]="sev(sel.severity).stripe">
+              </span>
+              <span [class]="agentLabelClass(getStatus(agent.key), sev(sel.severity), agentStyle(agent.color))">
+                {{ agent.label }}
+              </span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span *ngIf="metaLine(agent.key)" class="text-xs text-gray-400 tabular-nums">
+                {{ metaLine(agent.key) }}
+              </span>
+              <span [class]="statusLabelClass(getStatus(agent.key), sev(sel.severity))">
+                {{ statusLabel(getStatus(agent.key)) }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Running bounce dots (no output yet) -->
+          <div *ngIf="getStatus(agent.key) === 'running' && !getAgentOutput(agent.key)"
+               class="flex items-center gap-2 mt-1">
+            <div class="flex gap-0.5">
+              <span *ngFor="let d of [0,1,2]"
+                    class="w-1.5 h-1.5 rounded-full opacity-70"
+                    [ngClass]="sev(sel.severity).stripe"
+                    [ngStyle]="{'animation': bounceDelay(d)}">
+              </span>
+            </div>
+            <span class="text-xs text-gray-400">Calling Claude API…</span>
+          </div>
+
+          <!-- Completed output -->
+          <ng-container *ngIf="getStatus(agent.key) === 'completed' && getAgentOutput(agent.key) as output">
+
+            <!-- Raw (historical REST record) -->
+            <div *ngIf="isRaw(output)" class="space-y-1.5">
+              <p class="text-xs text-gray-500 italic">{{ output.action_taken }}</p>
+              <p class="text-sm text-gray-700 leading-snug">{{ output.reasoning }}</p>
+            </div>
+
+            <!-- Structured live WS output -->
+            <ng-container *ngIf="!isRaw(output)">
+              <ng-container [ngSwitch]="agent.key">
+
+                <div *ngSwitchCase="'detection'" class="space-y-1">
+                  <div class="flex items-center gap-3 text-xs text-gray-500">
+                    <span class="font-medium text-green-600">Exception detected</span>
+                    <span class="text-gray-300">·</span>
+                    <span>{{ round(output.confidence * 100) }}% confidence</span>
+                  </div>
+                  <p class="text-sm text-gray-700 leading-snug">"{{ output.summary }}"</p>
+                </div>
+
+                <div *ngSwitchCase="'analysis'" class="space-y-1.5">
+                  <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                    <span *ngIf="output.estimated_delay_days != null">
+                      <span class="font-medium text-gray-700">{{ output.estimated_delay_days }}d delay</span>
+                    </span>
+                    <span>urgency:
+                      <span class="font-medium" [ngClass]="urgencyColor(output.recommended_urgency)">
+                        {{ output.recommended_urgency }}
+                      </span>
+                    </span>
+                  </div>
+                  <p class="text-sm text-gray-700 leading-snug">{{ output.root_cause }}</p>
+                </div>
+
+                <div *ngSwitchCase="'decision'" class="space-y-1.5">
+                  <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                    <span>resolution:
+                      <span class="font-medium text-gray-700">{{ (output.resolution_type || '').replace('_', ' ') }}</span>
+                    </span>
+                    <span [ngClass]="output.notify_customer ? 'text-blue-600 font-medium' : 'text-gray-400'">
+                      {{ output.notify_customer ? '✉ notify customer' : 'no notification' }}
+                    </span>
+                  </div>
+                  <p class="text-sm text-gray-700 leading-snug">{{ output.rationale }}</p>
+                </div>
+
+                <div *ngSwitchCase="'communication'" class="space-y-1.5">
+                  <div class="flex items-center gap-3 text-xs text-gray-500">
+                    <span class="font-medium text-gray-700">"{{ output.subject }}"</span>
+                    <span class="font-medium" [ngClass]="toneColor(output.tone)">{{ output.tone }}</span>
+                  </div>
+                  <p *ngIf="output.message || output.message_preview"
+                     class="text-sm text-gray-500 italic leading-snug line-clamp-2">
+                    {{ output.message || output.message_preview }}
+                  </p>
+                </div>
+
+                <div *ngSwitchCase="'action'" class="space-y-1.5">
+                  <div class="flex items-center gap-3 text-xs text-gray-500">
+                    <span *ngIf="(output.executed_count ?? output.executed_actions?.length) != null">
+                      {{ output.executed_count ?? output.executed_actions?.length }} action(s) executed
+                    </span>
+                    <span class="font-medium" [ngClass]="actionStatusColor(output.overall_status)">
+                      {{ (output.overall_status || '').replace('_', ' ') }}
+                    </span>
+                  </div>
+                  <p class="text-sm text-gray-700 leading-snug">{{ output.notes }}</p>
+                </div>
+
+              </ng-container>
+            </ng-container>
+          </ng-container>
+
+          <!-- Failed state -->
+          <p *ngIf="getStatus(agent.key) === 'failed'" class="text-xs text-red-500 mt-1">
+            Agent failed — pipeline halted at this step.
+          </p>
+
+          <!-- Idle state -->
+          <p *ngIf="getStatus(agent.key) === 'idle'" class="text-xs text-gray-400 mt-0.5">
+            Waiting for upstream agent…
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </ng-container>
+</div>
