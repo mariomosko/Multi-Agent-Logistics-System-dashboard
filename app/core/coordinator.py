@@ -106,7 +106,7 @@ class AgentCoordinator:
 
             # ── Advance status ────────────────────────────────────────────
             exception.workflow_status = next_status
-            await db.flush()
+            await db.commit()   # release write lock before the agent call
             self._log.info(
                 "exception=%d  %-20s  status → %s",
                 exception.id, agent.name, next_status.value,
@@ -140,6 +140,7 @@ class AgentCoordinator:
                     .order_by(AgentAction.id.desc())
                 )
 
+                await db.commit()   # commit the agent's writes before broadcasting
                 await ws_manager.broadcast({
                     "event": "agent.completed",
                     "exception_id": exception.id,
@@ -272,7 +273,7 @@ class AgentCoordinator:
                     error_message=action_taken,
                 )
             )
-            await db.flush()
+            await db.commit()
         except Exception:
             self._log.exception(
                 "Could not write system-failure record for exception %d", exception.id
