@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+
+# Virtual environments
+.venv/
+MULT_AGENT_LOG.venv/
+venv/
+env/
+
+# Database (use Docker volumes)
+*.db
+*.db-shm
+*.db-wal
+
+# Secrets
+.env
+
+# Git
+.git/
+.gitignore
+
+# Frontend (has its own build context)
+dashboard/
+
+# Docs
+*.md
+conversation.md
+
+# Tests
+tests/

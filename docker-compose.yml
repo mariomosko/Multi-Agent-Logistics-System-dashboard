@@ -1,0 +1,47 @@
+name: logistics-dev
+
+services:
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app/app            # hot-reload: uvicorn --reload watches this
+      - ./scripts:/app/scripts
+      - db_data:/data
+    environment:
+      DATABASE_URL: sqlite+aiosqlite:////data/logistics.db
+      APP_ENV: development
+      LOG_LEVEL: DEBUG
+      SEED_ON_EMPTY: "true"
+    env_file: .env                # supplies ANTHROPIC_API_KEY
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./dashboard/src:/app/src        # Vite HMR picks up changes instantly
+      - ./dashboard/public:/app/public
+    environment:
+      BACKEND_URL: "http://backend:8000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  db_data:
+    name: logistics_db_dev
