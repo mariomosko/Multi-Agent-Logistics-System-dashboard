@@ -92,19 +92,7 @@ Pipelines run in `BackgroundTasks` (FastAPI's built-in background task runner). 
 
 ## Error handling strategy
 
-There are four nested layers of error handling, from outermost to innermost:
 
-```
-┌─ asyncio.wait_for (coordinator) ─────────────────────────────────────┐
-│  ┌─ CircuitBreakerOpen (coordinator) ───────────────────────────────┐ │
-│  │  ┌─ agent-level try/except ──────────────────────────────────┐  │ │
-│  │  │  ┌─ BaseAgent._call_claude (exponential backoff) ───────┐ │  │ │
-│  │  │  │   up to 3 attempts, respects Retry-After header      │ │  │ │
-│  │  │  └───────────────────────────────────────────────────── ┘ │  │ │
-│  │  └───────────────────────────────────────────────────────────┘  │ │
-│  └──────────────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────────────┘
-```
 
 ### Layer 1: Per-agent timeout (45 seconds)
 
@@ -115,11 +103,7 @@ There are four nested layers of error handling, from outermost to innermost:
 The circuit breaker tracks consecutive Anthropic API failures across all agents. After 5 consecutive failures, it trips OPEN for 60 seconds — all agent calls fail immediately with `CircuitBreakerOpen` instead of spending 45 seconds timing out each one.
 
 ```
-CLOSED ──(5 failures)──► OPEN ──(60s elapsed)──► HALF_OPEN
-                                                       │
-                         CLOSED ◄──(1 success)────────┤
-                           OPEN ◄──(1 failure)─────────┘
-```
+
 
 This protects against: cascading timeouts when the API is down, rate-limit storms, and accidental API key expiry consuming all pipeline slots.
 
